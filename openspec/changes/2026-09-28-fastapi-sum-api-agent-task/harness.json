@@ -1,0 +1,31 @@
+{
+  "stepAgents": {
+    "propose": {
+      "agent": "python-coding-agent-acp",
+      "model": "QuantTrio/Qwen3.6-35B-A3B-AWQ"
+    },
+    "review": {
+      "agent": "python-coding-agent-acp",
+      "model": "QuantTrio/Qwen3.6-35B-A3B-AWQ"
+    },
+    "apply": {
+      "agent": "python-coding-agent-acp",
+      "model": "QuantTrio/Qwen3.6-35B-A3B-AWQ"
+    },
+    "verify": {
+      "agent": "python-coding-agent-acp",
+      "model": "QuantTrio/Qwen3.6-35B-A3B-AWQ"
+    }
+  },
+  "autonomyLevel": "assisted",
+  "reviewGate": {
+    "mode": "human-required"
+  },
+  "timeout": {
+    "maxRunSeconds": 3600,
+    "maxStageSeconds": 900
+  },
+  "hints": {
+    "enabled": true
+  }
+}

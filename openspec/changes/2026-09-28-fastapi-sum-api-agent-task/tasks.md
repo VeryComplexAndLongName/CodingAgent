@@ -1,0 +1,4 @@
+- [ ] **Delegated to python-coding-agent-acp** In `C:/temp/acp-custom-llm`, create a Python FastAPI project that exposes `GET /api/v1/version` and `POST /api/v1/data` with Pydantic request model `{a: int, b: int}` and JSON response containing the sum. Evidence required: list of created files and endpoint handler code locations.
+- [ ] **Delegated to python-coding-agent-acp** Add runnable startup command and dependency definition for FastAPI + Pydantic (+ ASGI server). Evidence required: exact run command and dependency file content.
+- [ ] **Delegated to python-coding-agent-acp** Verify endpoint behavior with concrete requests: `GET /api/v1/version` and `POST /api/v1/data` body `{"a":1,"b":2}`. Evidence required: command(s) executed and captured responses showing expected output.
+- [ ] **Delegated to python-coding-agent-acp** Mark all tasks complete only after evidence is written into this file.

@@ -1,0 +1,111 @@
+schema: spec-driven
+
+context: |
+  Coding agent that uses arbitrary OpenAI compatible APIs for code generation
+  and review. This should be an ACP-compatible agent. That could call an 
+  arbitrary URL as OpenAI compatible API. This agent designed especially for
+  those people who have dedicated infrastructure for hosting their own LLM
+  models for code generation and review.
+rules:
+  proposal:
+    - The "Why" section must reference a specific architecture decision from
+      docs/adr/ or a specific risk raised in review — not an abstract "we need
+      this feature".
+    - The "Capabilities" section must always explicitly list both New and
+      Modified, even when one of them is empty.
+  design:
+    - A "Non-Goals" section is required.
+    - The "Decisions" section must list rejected alternatives and the reason
+      for rejecting them, not just the chosen solution.
+    - A "Risks / Trade-offs" section is always required.
+    - If the change touches the command/event protocol (see the context
+      above), explicitly list which commands/events are added or changed, and
+      confirm backward compatibility with the already implemented adapters
+      (server/extension), if they exist at the time of the change.
+  tasks:
+    - Every task must be verifiable (a specific file/test), not an abstract
+      "improve X".
+    - Tasks in execution-core that implement the security model (allowlist,
+      cwd sandbox, audit) cannot be marked complete without the corresponding
+      test in tasks — this is not a decorative section.
+    - One task must cover one file and one verifiable outcome; split any task
+      that names two files or two distinct behaviors.
+    - Name exact identifiers (function, command, or symbol names), exact file
+      paths, and the exact expected result instead of referring to "the
+      relevant" or "the corresponding" code.
+    - When a plausible-looking generalization of a task would be wrong, state
+      the prohibition explicitly in the task itself.
+    - >-
+      A task that an implementing agent cannot perform (live, interactive, or
+      manual verification) must be marked as such in the task text, and must
+      be reported as outstanding rather than checked off. Which marking
+      depends on why: `**Human-only**` where no agent can make the check (a
+      judgement, whether something reads well), and
+      `**Delegated to <agent-id>**` where another agent can — a live run, a
+      real VS Code host, a browser, a query against GitHub. The id is a
+      registry id (`copilot-cli`, `claude-cli-acp`), the same string
+      `stepAgents` accepts, so a misspelling is detectable.
+    - A delegated task must state the evidence the named agent has to record —
+      a test name and its run, a run id and the audit line, a command and its
+      output — and may be checked off only with that evidence written into the
+      task text. An agent asked to confirm that something works will confirm
+      that it works; an agent asked to quote a line either has it or does not.
+    - The implementing agent marks each task `[x]` in tasks.md as soon as that
+      task's own verification has passed — incrementally, not in a single batch
+      at the end of the run, and never before the task is actually done.
+    - When a change threads a new value through multiple layers, the tasks must
+      name the complete path it travels (origin through every intermediate layer
+      to the point of use) and require verification at each junction — not only
+      at the two ends. A task phrased as "widen the type here" is most cheaply
+      satisfied by discarding the new value at that layer, which type-checks and
+      passes every existing test; explicit junction checks prevent this.
+    - When an implementing agent reaches a task it cannot perform (live,
+      interactive, or manual verification), it SHALL skip that task, continue
+      with the remaining tasks, and report the skipped task as outstanding —
+      it never stops to wait for a human inside a run, since nothing in the
+      harness is listening for that wait — `apply` runs headless, and a chain
+      under `autonomous` has no confirmation channel at all. An author who
+      needs a run to actually stop must express that through `autonomyLevel`
+      (`assisted`, or `semi-autonomous` with
+      `checkpoints.requireConfirmationBetweenSteps`), not through task text.
+
+operations:
+  apply:
+    guidance:
+      - All repository modifications must belong to an active OpenSpec change
+        entry in `openspec/changes/<id>/`; do not bypass the change workflow
+        with ad-hoc direct commits.
+      - Architecture-impacting modifications require an ADR in `docs/adr/`
+        linked from the related OpenSpec change before the implementation can
+        be considered complete.
+      - Use the runtime pinned in the root package.json (`volta` + `engines`)
+        for local and CI execution; do not run repository commands with
+        arbitrary global Node.js/npm versions.
+      - Before completing apply, tsc (typecheck), eslint, and vitest must pass
+        for the affected packages; for server/extension, a manual smoke test
+        (a real run, not just unit tests) is also required before a task may be
+        marked complete.
+      - A version bump in the affected package's package.json is mandatory in
+        sync with every externally visible behavior change, proposed via a
+        changeset (`npx changeset`) in the same change rather than editing
+        `package.json`'s `version` field by hand — see
+        `.changeset/README.md` for the full workflow.
+      - >-
+        Versioning follows semver at the package level: patch — fixes,
+        documentation, and refactoring without changing the external
+        contract; minor — new capabilities that remain compatible with the
+        current contract; major — breaking changes in public behavior,
+        protocol, data format, or promised UX.
+      - Delivery forms may show an aggregated release version, but the source
+        of truth for behavior versions is the package versions; show `core`
+        separately if the UI exposes build information.
+  archive:
+    guidance:
+      - Before archiving, proposal.md/design.md must explicitly state which
+        contract tests between webui and server actually passed (not "should
+        pass"), and which risks remain open, with a link to the specific task.
+      - Do not archive a change if even one scenario from specs/ was not
+        actually verified by a test in code.
+      - Do not archive a change that adds or changes a command/event in the
+        protocol (see the context) without an updated contract test that covers
+        that exact change.

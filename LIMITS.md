@@ -1,0 +1,428 @@
+# Harness Spending Limits
+
+What actually stops an Agentic Harness run, in what unit, evaluated when
+— and, stated plainly, what does **not** exist as a limit at all. For
+everything else the harness can be configured to do, see
+[`HARNESS.md`](HARNESS.md).
+
+## At a glance
+
+| Scope | Configuration | Unit | Enforced |
+| --- | --- | --- | --- |
+| Whole chain | `budget.maxCostUsd` / `budget.maxTokens` | USD and/or tokens | Before each stage starts — **only for agents that report usage** (see below) |
+| One agent invocation | `stepAgents.<stage>.budget` | The selected agent's native unit | By that agent's CLI |
+| Elapsed time | `timeout.maxRunSeconds` / `timeout.maxStageSeconds` | Seconds | Before each stage **and during one** — a ceiling that stops a stage already running |
+| Context filled | `budget.maxContextShare` | A share of the model's window | **During a stage**, as the agent reports it — **only for agents that send a context gauge** (see below) |
+
+Two boundaries matter, and both are easy to assume away:
+
+1. A **spending** ceiling can prevent the next stage from starting; it
+   cannot interrupt the stage already running, because a run's cost is
+   not known until it ends. A **time** ceiling can. So can a **context**
+   ceiling, for the same reason: both read something known during the run
+   rather than at its end.
+2. A spending ceiling counts only what an agent **reported**. Over an
+   agent that reports nothing, it counts nothing and never fires — see
+   [Which agents report usage](#which-agents-report-usage). A time
+   ceiling needs no report and works over every agent. A context ceiling
+   needs a report of a different kind, which fewer agents send and which
+   is not a spend.
+
+## Four independent levels
+
+There are exactly four ceilings, checked in different places, in
+different units, and none substitutes for another.
+
+### 1. `HarnessConfig.budget` — caps a whole chain, between stages
+
+```json
+{ "budget": { "maxCostUsd": 25, "maxTokens": 2000000, "maxCost": { "credits": 500 } } }
+```
+
+`maxCostUsd`, `maxTokens` and `maxCost` are optional and independent — a
+configuration may cap any of them, all of them, or (by omitting `budget`
+entirely) none.
+
+`maxCost` is a ceiling **per unit of account**, for agents billed in
+something other than dollars. Each entry is compared only against what
+was reported in that same unit: nothing is converted, no exchange rate is
+invented, and no total mixes units. The unit is the code the agent itself
+reported, compared without regard to case, so `credits` and `Credits` are
+one ceiling. `maxCostUsd` remains the dollar ceiling and is not folded
+into the map.
+
+A ceiling in a unit no stage's agent is billed in is reported before the
+run, where the configuration is chosen — see "A configuration says
+which of its ceilings cannot act". It is not refused: an operator may
+knowingly set a ceiling that binds some stages and not others.
+
+`HarnessChainRunner.checkBudget` sums this change's own recorded audit
+usage — usage the agent reported, for the agents that report any — and
+compares it against this ceiling **before starting each stage**
+— never during one. **This cannot stop a stage already running.** A stage
+that is mid-run when the ceiling is crossed is allowed to finish; the
+chain simply does not start the next one. This is a deliberate property
+of the design (ADR 0018 decision 7: a run's cost is not known until it
+ends), not an oversight to work around.
+
+`maxTokens` counts `inputTokens + outputTokens` and nothing else — cache
+and thought tokens are excluded, which on a cache-heavy agent is most of
+what moved. See [Which agents report usage](#which-agents-report-usage)
+for the measurement.
+
+#### `maxStageCostUsd` / `maxStageTokens` — the same ceiling, on one stage
+
+```json
+{ "budget": { "maxCostUsd": 25, "maxStageCostUsd": 8 } }
+```
+
+Enforced by this project, so it exists for every agent that reports usage
+— where `stepAgents.<stage>.budget` below reaches a CLI flag only two of
+the ten have.
+
+It is checked **when a stage ends**, against what that stage reported,
+and it stops the **chain**, not the stage. The name suggests otherwise
+and cannot deliver it: a run's cost is not known until it ends. So it
+prevents the next overspend, never the one that happened. The ceiling
+that stops a stage mid-run is [`timeout`](#3-timeout--caps-a-chain-and-a-stage-in-seconds).
+
+An agent that reports nothing gives it nothing to compare, and it does
+not fire. That is not a pass — it is the same blind spot every spending
+ceiling has, and it is the reason `timeout` exists.
+
+A stage ceiling above the chain ceiling is refused where the
+configuration resolves: the chain ceiling would stop the run first, so
+the stage one could never fire.
+
+### 2. `stepAgents.<stage>.budget` — passed to one CLI invocation
+
+```json
+{ "stepAgents": { "apply": { "agent": "claude-cli", "budget": { "maxCostUsd": 10 } } } }
+```
+
+`maxCostUsd` **or** `maxAiCredits` — exactly one field, in whichever unit
+the chosen agent's own CLI accepts (see the table below) — passed straight
+through as that CLI's own flag for a single invocation. This is not a
+chain-wide ceiling; it bounds one stage's one agent run.
+
+Both harness settings views — the global one in the **Harness Settings**
+tab and a change's own in the Change Editor's **Harness** tab — reveal the
+budget input only after an agent with a supported budget unit is selected.
+In this generated capture of the global view, `claude-cli` exposes
+**propose max cost (USD)**:
+
+[![Standalone Harness Settings showing the Claude CLI effort and max-cost controls](./docs/images/standalone/harness-settings.png)](./docs/images/standalone/harness-settings.png)
+
+*Select the image for the full-resolution settings view. See
+[`HARNESS.md`](HARNESS.md#where-each-setting-is-edited) for the complete
+control map and the screenshot regeneration command.*
+
+## Why there is no single `budget: number`
+
+The same reasoning is why `maxCost` above is a map from unit to ceiling
+rather than one number: the unit travels with the amount, and two units
+are two ceilings rather than one sum.
+
+A portable, unit-agnostic `budget` field was rejected, for three concrete
+reasons found investigating what the underlying CLIs actually accept:
+
+1. **GitHub publishes one AI credit as $0.01 — a vendor decision, not a
+   fixed exchange rate.** A configuration written in a currency amount
+   would silently mean something different if that rate changed, and
+   nothing here would notice.
+2. **`copilot-cli`'s `--max-ai-credits` has a 30-credit floor.** A dollar
+   figure converted downward could land below that floor, in which case
+   the CLI's own minimum — not the user's configured value — would be
+   what actually governed the run.
+3. **Rounding dollars to whole credits either exceeds or tightens the cap
+   the user wrote**, in either rounding direction, for the same reason:
+   the conversion is lossy and one-way.
+
+Each agent's own field, in its own native unit, avoids all three: no
+conversion happens at all, so nothing to silently drift.
+
+## Which agent honours which field
+
+| Agent | Field | CLI flag | Notes |
+| --- | --- | --- | --- |
+| `claude-cli`, `claude-cli-acp` | `maxCostUsd` | `--max-budget-usd` | Requires Claude Code v2.1.217 or later. |
+| `copilot-cli`, `copilot-cli-acp` | `maxAiCredits` | `--max-ai-credits` | Minimum 30 — a configured value below this is rejected before any run starts. |
+| `codex-cli`, `gemini-cli`, `local-llm`, `codex-cli-acp`, `gemini-cli-acp`, `deepseek-cli-acp`, `vscode-chat` | Neither | — | No spending-cap mechanism at all; a `stepAgents` entry setting either field for one of these is rejected. |
+
+**A mismatched field is refused when the configuration resolves, not
+minutes into a run.** Setting `stepAgents.apply.budget.maxAiCredits` while
+`stepAgents.apply.agent` is `"claude-cli"` fails
+`resolveHarnessConfig`/`writeGlobalHarnessConfig`/`writeChangeHarnessConfig`
+immediately, before any CLI process is spawned — not as a runtime error
+partway through a stage.
+
+### 3. `timeout` — caps a chain and a stage, in seconds
+
+```json
+{ "timeout": { "maxRunSeconds": 3600, "maxStageSeconds": 600 } }
+```
+
+Both optional and independent, absent meaning unbounded — the shape
+`budget` established, and settable in the same two places.
+
+**This is the only ceiling that can stop a stage already running.** The
+reason `budget` cannot is that a run's cost is not known until it ends;
+elapsed time does not share that property, so the argument for deferring
+does not transfer. It is also the only ceiling with any force over an
+agent that reports no usage — which is six of the ten below.
+
+Time accumulates while a stage runs and **stops while the chain waits at
+a checkpoint**. A person deliberating is not a run consuming anything,
+and counting it would fire the ceiling on chains behaving exactly as
+`semi-autonomous` intends.
+
+Reaching either ceiling ends the run as **cancelled, with the reason
+naming the ceiling and its value** — not failed. A ceiling doing its job
+is not a defect, and a reader needs to tell a person's click from a rule
+firing.
+
+`maxStageSeconds` may not exceed `maxRunSeconds`: the run ceiling would
+stop the chain first, so the stage ceiling could never fire, and a
+setting that cannot fire is a setting that lies. That pair is rejected
+where the configuration resolves.
+
+**A run ceiling below five minutes can cut the `git` stage mid-poll.**
+That stage waits up to five minutes for a pull request's checks
+(`gh-pr-gateway.ts`'s `maxWaitMs`), and that wait is the stage doing its
+work, so it counts against the ceiling like any other.
+
+### 4. `budget.maxContextShare` — caps how full the context gets, during a stage
+
+```json
+{ "budget": { "maxContextShare": 0.8 } }
+```
+
+A share between 0 and 1: `0.8` is eighty percent of the model's window.
+A value outside that range is refused where the configuration resolves,
+so somebody who means eighty percent and writes `80` is told, rather than
+handed a ceiling that could never fire.
+
+**This is not a spending ceiling, and it is deliberately not counted as
+one.** ACP's `usage_update` carries `used` and `size`: the tokens now in
+the session's context, against the model's window. It goes *down* after a
+compaction, so counting it as consumption would under-count exactly the
+long runs that compact — which is why nothing here records it as usage.
+
+What it does say is that the conversation has outgrown the task. Every
+further turn carries the whole of it again: slower, dearer, and worse at
+the work than the same task started fresh.
+
+Like `timeout`, and unlike every spending ceiling, **it stops a stage
+already running** — the gauge arrives during the run rather than at its
+end. Reaching it ends the run as **cancelled, with the reason naming the
+ceiling, the reading it was judged on and both figures**, exactly as a
+time ceiling does.
+
+It reads a figure only an ACP-flavored agent sends. Over an agent that
+speaks no ACP at all it can never fire, and the settings surfaces say so
+before the run rather than after it. Over an ACP agent nobody here has
+watched, nothing is claimed either way — see the table below.
+
+## What does not exist
+
+**There is no ceiling on a single task**, only on a stage and on a chain.
+A stage hands its whole task list to one agent in one conversation, and
+usage is reported per run, so there is nothing to attribute to one task.
+A stage ceiling is what bounds a task that turns out unexpectedly
+expensive.
+
+The durations that do exist in the codebase are not user-configurable
+harness settings — naming them here precisely so none is mistaken for
+one:
+
+- `external-waiter.ts`'s `maxDurationMs` — a generic poller's own
+  parameter, built for the suspendable-stage capability
+  (`harness-suspendable-stage`). Not a harness config field; whatever
+  calls `waitForExternalSignal` would supply it — and, as of this
+  writing, nothing in `packages/core/src` actually calls it yet (the `git`
+  stage's own check-polling, below, uses a separate loop instead).
+- `gh-pr-gateway.ts`'s `maxWaitMs` (default 300000ms / 5 minutes) — how
+  long the `git` stage polls a pull request's checks before giving up and
+  treating the wait as a refusal (see `HARNESS.md`'s "The `git` stage").
+  Not user-configurable.
+- Agent detection's own timeout (the best-effort "is this CLI on `PATH`"
+  probe each host's picker runs) — unrelated to a run's own duration.
+- The CI job ceilings in `.github/workflows/quality.yml` — see below.
+  These bound CI, not a harness run.
+
+None of the above is reachable from `openspec/agent-harness.json` or a
+per-change `harness.json`. A run can now be stopped on a clock by
+`timeout` above; these particular durations still cannot be configured
+from either file.
+
+## Where the numbers come from
+
+Every ceiling above is compared against **recorded audit usage** —
+`.openspec-ui/audit.jsonl` under the workspace root, read back by
+`buildUsageReport` (`packages/core/src/usage-report.ts`). Each
+`AuditEntry`'s `usage` field is "resource usage reported for this run, as
+reported by the agent only — never estimated or derived." Absent means no
+usage was reported, **not zero usage**.
+
+Not every entry is an agent's run. `verify` records what a change's
+declared mechanical checks found, and the `git` stage records its own
+mechanical actions. Neither carries `usage`, because neither invoked a
+model. An entry whose agent is not an agent says so in that field:
+
+| Entry | `agent` | Its own fields | Counted as a run |
+| --- | --- | --- | --- |
+| An agent's run | the agent's registry id | `usage`, `agentVersion`, `effort` | Yes — a `started` and a terminal partner make one run |
+| What `verify`'s checks found | `verify-checks` | `checksRan`, `checksFailed`, `checkedAgent` | **No** — it is a fact about the run beside it |
+| A `git` stage action | `git-stage` | `invocation` | Yes — each action is written as its own `started`/terminal pair |
+
+`checkedAgent` on a checks entry names **the agent whose work the checks
+covered** — the agent the chain resolved for its `apply` stage — because
+`agent` there names the runner that wrote the entry rather than anything
+that ran. The quality readback (`verify-quality.ts`, shown in the run
+dialog) groups by `checkedAgent` for exactly that reason: grouping by
+`agent` produced one row named `verify-checks` whatever had run the
+apply.
+
+**An entry written before that field existed carries no `checkedAgent`.**
+It is counted in the totals and reported as recorded before the agent
+was named, and it is charged to no agent — nothing on it says which
+agent that would be, and inferring one from the entries around it would
+fail silently on a log that had been rotated or filtered by change. Every
+checks entry in this repository's log predates the field, because none
+had been written at all when it was added (see
+`quality-is-charged-to-the-agent-whose-work-was-checked`).
+
+A checks entry is also excluded wherever runs are counted — the per-change
+cost report, the workspace figures, and the "previous runs" in a
+recommendation's grounds — by one predicate, `isRunEntry`
+(`packages/core/src/audit-runs.ts`). It carries a terminal outcome and no
+`started` partner, so before that it was counted as a run refused before
+it started, and one chain run of apply and verify reported two previous
+runs.
+
+The check counts are recorded whether or not the verifying agent then
+runs. A `verify` whose checks failed does not invoke it, so before this
+the run that found the most left no trace at all.
+
+The practical consequence: **a ceiling can only count what an agent
+actually reported.** A change whose runs never report usage at all never
+trips the chain-level `budget` ceiling — not because it stayed under
+budget, but because there is nothing recorded to compare against. This is
+the same "fail open when the evidence is absent" posture
+`HarnessChainRunner.checkBudget` documents explicitly for itself.
+[Which agents report usage](#which-agents-report-usage) below says which
+agents those are.
+
+## Which agents report usage
+
+A chain ceiling is only as wide as the reporting behind it. Which agent
+ran a stage decides whether that stage counted toward the ceiling at all.
+
+This table is also recorded in code, as `reports` on each agent's entry
+in `HARNESS_AGENT_CAPABILITIES` (`harness-step-agent.ts`) — the product
+warns about a ceiling that cannot act by reading it. **Measure an agent
+and update both**, or the warning and this page will disagree.
+
+Beside it, `contextGauge` records a different question: whether the agent
+says *during* a run how full its context is, which is what
+`budget.maxContextShare` reads. An agent can send a gauge and report no
+spend, as `deepseek-cli-acp` does; the two are not the same column.
+
+| Agent | Sends a context gauge | Evidence |
+| --- | --- | --- |
+| `deepseek-cli-acp` | Yes, on every turn | **Measured** 2026-09-23: `{"used":8202,"size":1000000,"sessionUpdate":"usage_update"}`, and `dsh-acp`'s own `usageUpdate` builds it from a context meter |
+| `claude-cli`, `copilot-cli`, `codex-cli`, `gemini-cli`, `local-llm`, `vscode-chat` | No | Certain — they speak no ACP at all, so no update of any kind arrives |
+| `copilot-cli-acp`, `claude-cli-acp`, `gemini-cli-acp`, `codex-cli-acp` | Not known | *Unobserved here.* Nothing is claimed either way, and no warning is raised: an ACP agent nobody has watched may well send one |
+
+| Agent | Reports usage | Evidence | Source |
+| --- | --- | --- | --- |
+| `copilot-cli-acp` | Input, output and thought **tokens**. **No cost.** | **Measured** — see below | ACP's `PromptResponse.usage` |
+| `claude-cli-acp` | Cost (USD), input/output/cache tokens, per-model split | **Measured** — see below | `claude`'s own terminal `"result"` line (`total_cost_usd`, `usage`, `modelUsage`) |
+| `gemini-cli-acp`, `codex-cli-acp` | Whatever that CLI sends over ACP — token totals, a cost, or nothing | *Unobserved* | ACP's `PromptResponse.usage` and `usage_update` notifications |
+| `deepseek-cli-acp` | Nothing countable: no cost, no credits, no token split | **Measured** 2026-09-23, correcting 2026-09-22: a run through `dsh` 0.1.5-rc.2 does send `usage_update`, and what it carries is `used` and `size` - the tokens now in the session's context, against the model's 1,000,000-token window. One number, growing as the conversation grows: no input/output/cache/thought split, no per-model figures, no currency. The prompt's own answer carries `stopReason` and nothing else. `dsh`'s ACP layer builds that notification from its context meter alone, so there is nothing further to read. A context gauge is not a spend, and nothing here converts one into the other | ACP's `PromptResponse.usage` and `usage_update` notifications |
+| `claude-cli`, `copilot-cli`, `codex-cli`, `gemini-cli`, `local-llm` | Nothing | Certain — plain text carries no figure to record | Plain text output |
+| `vscode-chat` | Nothing | Certain | The run is handed to VS Code chat; this project never sees its cost |
+
+### What that means for a ceiling, per agent
+
+**On `copilot-cli-acp`, `budget.maxCostUsd` can never fire.** It reports
+tokens and no cost, so a cost ceiling compares against nothing however
+large the spend. `budget.maxTokens` is the ceiling that can act on it.
+
+Measured on 2026-09-04 from this repository's own
+`.openspec-ui/audit.jsonl`: one completed run recorded
+`{inputTokens: 786966, outputTokens: 4732, thoughtTokens: 1308}` and no
+cost field of any kind.
+
+That is one observation, of one version of one CLI. ACP marks the usage
+field on a prompt response `UNSTABLE`/`@experimental`, so a later
+version may send something else — including a cost. Read the audit log
+rather than trusting this line indefinitely.
+
+**`claude-cli-acp` reports cost, and `budget.maxCostUsd` can act on it.**
+Measured on 2026-09-05 from a harness chain run in this repository: one
+stage reported 60 input, 8,262 output and 1,693,507 cache tokens for
+$1.57. That is the first cost figure any agent has reported here, and it
+is what makes a USD ceiling meaningful on this agent — on
+`copilot-cli-acp` only `maxTokens` can fire.
+
+That measurement also exposes what `maxTokens` does **not** count.
+`checkBudget` compares `inputTokens + outputTokens` only, so of the
+1,701,829 tokens that stage moved it counted 8,322 — under half a
+percent. Cache reads are excluded, and so are `thoughtTokens`, which is
+the only figure `copilot-cli-acp` adds beyond input and output. The
+`maxTokens: 2000000` used as an example earlier on this page would not
+have fired on this run, or on two hundred more like it.
+
+So on `claude-cli-acp` the ceiling to set is `maxCostUsd`: it is compared
+against the figure the vendor computed over everything it charged for.
+`maxTokens` is the fallback for agents that report no cost, and on those
+it measures a deliberately narrow slice.
+
+**A run that fails may record nothing.** Three of the four runs that
+terminated after this capability shipped failed, and none recorded usage:
+the agent never finished its turn, so it never reported. Their spend
+counts toward no ceiling. A ceiling protects you from a long
+*successful* run, not from a sequence of expensive failures.
+
+**The raw-text CLIs report nothing, so a ceiling over them counts nothing
+and cannot fire.** `claude-cli` and `claude-cli-acp` drive the same
+underlying `claude` binary, but only the latter asks for the structured
+output the figure lives in. If a chain ceiling matters to you, that
+choice of agent is what decides whether it can act at all.
+
+One figure is deliberately **not** recorded as usage: an ACP
+`usage_update`'s `used` is how much of the context window is currently
+occupied, and it goes *down* after a compaction. Counting it as
+consumption would under-count exactly the long runs that compact.
+
+It is not ignored either. `budget.maxContextShare` reads it as what it
+is - a gauge, not a bill - and is the only ceiling besides `timeout` that
+can act on an agent reporting no spend at all.
+
+## Watching it while it runs
+
+A chain run shows what it has spent as it goes: a usage summary beside
+the event log, with a row per stage that has started, and the configured
+ceiling beside the recorded total when one is configured.
+
+Two things there are deliberately not the same number:
+
+- **The recorded total** is what agents reported for stages that have
+  finished. It is the figure a ceiling is compared against.
+- **A live figure**, where an agent sends one, is that agent's own
+  running report during a stage — including how much of its context
+  window is occupied, which falls after a compaction and is never an
+  amount spent. It is shown as the agent's commentary and counts toward
+  nothing.
+
+A stage whose agent reported nothing reads "not reported", never
+`$0.00`. Reaching a ceiling stops the chain before the next stage; it
+does not interrupt the stage already running.
+
+## CI job timeouts (not a harness setting)
+
+`.github/workflows/quality.yml` sets a `timeout-minutes` per job — these
+are real ceilings, but they bound CI runs, not Agentic Harness runs, and
+nothing here configures them. See that workflow file directly for the
+current values.

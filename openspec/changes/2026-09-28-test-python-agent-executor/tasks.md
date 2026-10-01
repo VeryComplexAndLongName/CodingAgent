@@ -1,0 +1,2 @@
+- [x] **Delegated to python-coding-agent-acp** Create file docs/test-agent-executor-proof.md with exact content: `Test change executed by python-coding-agent-acp.` Evidence required: file path and first line content. Evidence: docs/test-agent-executor-proof.md line 1 = `Test change executed by python-coding-agent-acp.`
+- [x] **Delegated to python-coding-agent-acp** Mark this task list item complete only after the proof file exists and matches expected content. Evidence: agent run output: `Task completed. The proof file was created with the expected content.`

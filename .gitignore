@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.env
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# Runtime state: OpenSpec Workbench's run journal, and the agent's own
+# background-process logs.
+.openspec-ui/
+.coding-agent/

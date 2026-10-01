@@ -1,0 +1,16 @@
+- [x] Add ADR file docs/adr/0001-python-acp-coding-agent.md with architecture decision, alternatives, and security notes.
+- [x] Add packaging file pyproject.toml with src-layout entry point coding-agent and Python dependency declarations.
+- [x] Add agent configuration model in src/coding_agent/config.py supporting base_url, model, optional api_key, and runtime limits.
+- [x] Add OpenAI-compatible provider in src/coding_agent/llm/openai_compatible.py implementing chat completions with tool-call support.
+- [x] Add tool registry and built-in tools in src/coding_agent/tools/registry.py and src/coding_agent/tools/builtin.py with verifiable functions: read_file, write_file, list_dir, search_text, run_command.
+- [x] Add agent runtime loop in src/coding_agent/agent.py that enforces max_iterations, max_tool_calls, and max_seconds.
+- [x] Add ACP-compatible stdio server in src/coding_agent/acp_server.py with RPC handlers initialize, session/new, session/prompt and session/update notifications.
+- [x] Add CLI interface in src/coding_agent/cli.py supporting commands run and acp plus --base-url/--api-key/--model flags.
+- [x] Add user documentation in README.md describing setup, environment variables, limits, and harness usage path.
+- [x] Add tests in tests/test_limits.py and tests/test_tools.py validating limit enforcement and tool safety constraints.
+- [x] Migrate configuration, protocol payloads, and internal result/tool-call models to Pydantic in src/coding_agent/config.py, src/coding_agent/types.py, and src/coding_agent/acp_models.py.
+- [x] Extend ACP handlers so `session/new` and `session/prompt` accept `limits` payloads and enforce merged limit configuration at runtime.
+- [x] Add token and context limits (`max_prompt_tokens`, `max_completion_tokens`, `max_total_tokens`, `max_context_share`, and related controls) to runtime enforcement in src/coding_agent/agent.py.
+- [x] Extend built-in tools with patch-like text replacement, git operations, and background command lifecycle controls in src/coding_agent/tools/builtin.py.
+- [x] Split user documentation into topic files under docs/ and link them from README.md.
+- [x] Add strict ACP payload schemas and golden JSON compatibility tests in tests/test_acp_golden.py with fixtures under tests/golden/.

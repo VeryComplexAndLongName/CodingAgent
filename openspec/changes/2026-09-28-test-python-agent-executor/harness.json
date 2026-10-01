@@ -1,0 +1,28 @@
+{
+  "stepAgents": {
+    "propose": {
+      "agent": "python-coding-agent-acp",
+      "model": "mock-openai"
+    },
+    "review": {
+      "agent": "python-coding-agent-acp",
+      "model": "mock-openai"
+    },
+    "apply": {
+      "agent": "python-coding-agent-acp",
+      "model": "mock-openai"
+    },
+    "verify": {
+      "agent": "python-coding-agent-acp",
+      "model": "mock-openai"
+    }
+  },
+  "autonomyLevel": "assisted",
+  "reviewGate": {
+    "mode": "human-required"
+  },
+  "timeout": {
+    "maxRunSeconds": 1800,
+    "maxStageSeconds": 600
+  }
+}
