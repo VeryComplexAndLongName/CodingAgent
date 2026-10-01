@@ -53,8 +53,6 @@ def test_a_turn_over_stdio_writes_in_the_sessions_cwd(tmp_path: Path) -> None:
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
         base_url = f"http://127.0.0.1:{server.server_address[1]}/v1"
-        # The global options come before the subcommand: argparse reads
-        # them only there.
         process = subprocess.Popen(
             [sys.executable, "-m", "coding_agent.cli", "--base-url", base_url, "--model", "m", "--max-iterations", "5", "acp"],
             stdin=subprocess.PIPE,
@@ -103,3 +101,36 @@ def test_a_turn_over_stdio_writes_in_the_sessions_cwd(tmp_path: Path) -> None:
     assert lines[-1]["result"]["usage"] == {"inputTokens": 22, "outputTokens": 6, "totalTokens": 28}
     assert (tmp_path / "hello.txt").read_text(encoding="utf-8") == "hi"
     assert not (tmp_path / ".coding-agent").exists()
+
+
+def test_global_options_written_after_the_subcommand_are_read(tmp_path: Path) -> None:
+    # OpenSpec Workbench's `local-llm-acp` adapter writes
+    # `acp --base-url <url> --model <model> ...limits` — the subcommand
+    # first. Measured on 2026-10-01: that exact argv answered
+    # "unrecognized arguments" and exited 2 before any protocol message.
+    _FakeModel.calls = 0
+    server = HTTPServer(("127.0.0.1", 0), _FakeModel)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        base_url = f"http://127.0.0.1:{server.server_address[1]}/v1"
+        process = subprocess.Popen(
+            [sys.executable, "-m", "coding_agent.cli", "acp", "--base-url", base_url, "--model", "m", "--max-iterations", "5"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+        )
+        assert process.stdin is not None and process.stdout is not None
+        request = {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": 1, "clientCapabilities": {}}}
+        process.stdin.write(json.dumps(request) + "\n")
+        process.stdin.flush()
+
+        line = json.loads(process.stdout.readline())
+        process.stdin.close()
+        process.wait(timeout=10)
+    finally:
+        server.shutdown()
+
+    assert line["result"]["protocolVersion"] == 1
+

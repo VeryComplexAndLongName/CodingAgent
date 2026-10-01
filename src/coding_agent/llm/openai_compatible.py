@@ -10,11 +10,20 @@ from coding_agent.types import AgentUsage, AssistantTurn, ToolCall
 
 
 class OpenAICompatibleProvider:
-    def __init__(self, base_url: str, model: str, api_key: str | None, timeout_seconds: int = 120) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        model: str,
+        api_key: str | None,
+        timeout_seconds: int = 120,
+        trust_env: bool = True,
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._model = model
         self._api_key = api_key
         self._timeout_seconds = timeout_seconds
+        # False keeps a model on the local network out of a corporate proxy.
+        self._trust_env = trust_env
 
     def _chat_completions_url(self) -> str:
         if self._base_url.endswith("/v1"):
@@ -40,7 +49,7 @@ class OpenAICompatibleProvider:
         if request_options:
             payload.update(request_options)
 
-        with httpx.Client(timeout=self._timeout_seconds) as client:
+        with httpx.Client(timeout=self._timeout_seconds, trust_env=self._trust_env) as client:
             response = client.post(self._chat_completions_url(), headers=headers, json=payload)
             response.raise_for_status()
             data = response.json()

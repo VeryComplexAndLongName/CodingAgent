@@ -61,6 +61,7 @@ class AgentConfig(BaseModel):
     api_key: str | None
     workspace: Path
     limits: AgentLimits
+    no_proxy: bool = False
 
     @field_validator("workspace", mode="before")
     @classmethod
@@ -81,3 +82,10 @@ def from_env_defaults() -> tuple[str, str, str | None]:
     model = os.getenv("CODING_AGENT_MODEL", DEFAULT_MODEL)
     api_key = os.getenv("CODING_AGENT_API_KEY")
     return base_url, model, api_key
+
+
+def no_proxy_from_env() -> bool:
+    value = os.getenv("CODING_AGENT_NO_PROXY")
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}

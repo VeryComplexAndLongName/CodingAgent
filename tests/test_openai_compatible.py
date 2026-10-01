@@ -8,6 +8,9 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 
+import httpx
+import pytest
+
 from coding_agent.llm.openai_compatible import OpenAICompatibleProvider, tool_calls_in_text
 
 _KNOWN = {
@@ -111,3 +114,29 @@ def test_a_tool_call_with_null_arguments_reads_as_no_arguments() -> None:
 
     assert turn.content == ""
     assert [(call.name, call.arguments) for call in turn.tool_calls] == [("git_status", {})]
+
+
+def test_the_environment_is_trusted_unless_the_provider_is_told_not_to(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A corporate proxy in the environment answered 502 for a model on the
+    # local network, measured 2026-10-01.
+    server = _serve({"choices": [{"message": {"role": "assistant", "content": "ok"}}]})
+    seen: list[bool] = []
+    real_client = httpx.Client
+
+    def recording_client(*args: object, **kwargs: Any) -> httpx.Client:
+        seen.append(kwargs["trust_env"])
+        return real_client(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(httpx, "Client", recording_client)
+    base_url = f"http://127.0.0.1:{server.server_address[1]}/v1"
+    try:
+        OpenAICompatibleProvider(base_url=base_url, model="m", api_key=None, trust_env=False).complete(
+            messages=[{"role": "user", "content": "hi"}], tools=[]
+        )
+        OpenAICompatibleProvider(base_url=base_url, model="m", api_key=None).complete(
+            messages=[{"role": "user", "content": "hi"}], tools=[]
+        )
+    finally:
+        server.shutdown()
+
+    assert seen == [False, True]

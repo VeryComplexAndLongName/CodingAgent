@@ -6,6 +6,7 @@ Global options:
 - `--base-url`
 - `--model`
 - `--api-key`
+- `--no-proxy`
 - `--workspace`
 - `--max-iterations`
 - `--max-tool-calls`
@@ -24,12 +25,29 @@ Commands:
 - `run <prompt>`
 - `acp`
 
+Every global option may come before `run`/`acp` or after it — a real ACP
+client such as OpenSpec Workbench's `local-llm-acp` adapter writes them
+after (`acp --base-url ... --model ...`). Where the same option is
+written in both places, the one after the subcommand is used.
+
 ## Environment variables
 
 Fallback values:
 - `CODING_AGENT_BASE_URL`
 - `CODING_AGENT_MODEL`
 - `CODING_AGENT_API_KEY`
+- `CODING_AGENT_NO_PROXY` (`1`/`true`/`yes`/`on`)
+
+## Proxies
+
+Model calls follow `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` from the
+environment. Behind a corporate proxy that cannot reach a model served on
+the local network, the proxy answers `502 Bad Gateway`; `--no-proxy` makes
+the agent connect to the endpoint directly instead.
+
+```bash
+coding-agent --no-proxy --base-url http://192.168.137.33:8000/v1 --model qwen3 run "..."
+```
 
 ## Typical configurations
 
