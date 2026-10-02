@@ -14,3 +14,6 @@ class ToolRegistry:
 
     def call(self, name: str, arguments: dict[str, Any]) -> str:
         return self._builtin_tools.call(name, arguments)
+
+    def close(self) -> None:
+        self._builtin_tools.close()

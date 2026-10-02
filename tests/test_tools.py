@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -38,3 +39,15 @@ def test_replace_move_delete_file(tmp_path: Path) -> None:
 
     delete_result = tools.delete_path("nested/b.txt")
     assert "Deleted nested/b.txt" == delete_result
+
+
+def test_close_stops_a_running_background_process(tmp_path: Path) -> None:
+    tools = BuiltinTools(workspace=tmp_path, command_timeout_seconds=2, max_command_output_chars=1000)
+    result = tools.run_command_background(f'"{sys.executable}" -c "import time; time.sleep(30)"')
+    process_id = result.split("process_id: ")[1].strip()
+
+    tools.close()
+
+    status = tools.get_background_process(process_id)
+    assert "state: exited(" in status
+

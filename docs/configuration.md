@@ -23,12 +23,29 @@ Global options:
 
 Commands:
 - `run <prompt>`
+- `chat`
 - `acp`
 
 Every global option may come before `run`/`acp` or after it — a real ACP
 client such as OpenSpec Workbench's `local-llm-acp` adapter writes them
 after (`acp --base-url ... --model ...`). Where the same option is
 written in both places, the one after the subcommand is used.
+
+### `chat`
+
+An interactive, multi-turn conversation over stdin/stdout: each line is a
+turn, and every turn shares one conversation with every line before it
+in the same process. A blank line is skipped. `exit`, `quit`, end of
+input (Ctrl-D) or Ctrl-C ends the session.
+
+```bash
+coding-agent --base-url http://localhost:8000/v1 --model qwen2.5-coder chat
+```
+
+A background process `run_command_background` started during the
+session, if still running, is stopped when the session ends — the same
+is true of `run` and `acp` — so nothing a turn started outlives the
+agent's own process.
 
 ## Environment variables
 

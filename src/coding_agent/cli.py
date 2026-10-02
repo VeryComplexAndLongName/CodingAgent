@@ -63,6 +63,9 @@ def build_parser() -> argparse.ArgumentParser:
     _add_global_args(run_parser, suppress_defaults=True)
     run_parser.add_argument("prompt")
 
+    chat_parser = subparsers.add_parser("chat", help="Hold an interactive, multi-turn conversation over stdin/stdout")
+    _add_global_args(chat_parser, suppress_defaults=True)
+
     acp_parser = subparsers.add_parser("acp", help="Run ACP-compatible stdio JSON-RPC server")
     _add_global_args(acp_parser, suppress_defaults=True)
     return parser
@@ -109,6 +112,34 @@ def _build_agent(args: argparse.Namespace, workspace: Path | None = None) -> Cod
     return CodingAgent(config=config, provider=provider, tools=tools)
 
 
+def _run_chat(agent: CodingAgent) -> None:
+    """One line of stdin per turn, every turn sharing one conversation,
+    until `exit`/`quit`, end of input, or Ctrl-C. A turn that raises (a
+    network error, a limit the provider itself rejects) ends that turn,
+    not the session: the line it failed on is dropped from the shared
+    conversation, and the next line is read as normal."""
+    conversation: list[dict[str, object]] = []
+    while True:
+        try:
+            line = input("> ")
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+        prompt = line.strip()
+        if not prompt:
+            continue
+        if prompt.lower() in {"exit", "quit"}:
+            return
+        before = len(conversation)
+        try:
+            result = agent.run_prompt(prompt=prompt, conversation=conversation)
+        except Exception as exc:  # noqa: BLE001
+            del conversation[before:]
+            logger.error("Turn failed: {}", exc)
+            continue
+        logger.info(result.message)
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
@@ -121,16 +152,28 @@ def main() -> int:
         sys.stdin.reconfigure(encoding="utf-8")
         sys.stdout.reconfigure(encoding="utf-8")
         server = ACPServer(agent_factory=lambda cwd: _build_agent(args, workspace=cwd))
-        server.serve(sys.stdin)
+        try:
+            server.serve(sys.stdin)
+        finally:
+            # A session's background process does not outlive this one.
+            for session in server.sessions.values():
+                session.agent.close()
         return 0
 
     logger.add(sys.stdout, format="{message}")
     agent = _build_agent(args)
 
-    if args.command == "run":
-        result = agent.run_prompt(prompt=args.prompt)
-        logger.info(result.message)
-        return 0
+    try:
+        if args.command == "run":
+            result = agent.run_prompt(prompt=args.prompt)
+            logger.info(result.message)
+            return 0
+
+        if args.command == "chat":
+            _run_chat(agent)
+            return 0
+    finally:
+        agent.close()
 
     parser.error("Unknown command")
     return 2

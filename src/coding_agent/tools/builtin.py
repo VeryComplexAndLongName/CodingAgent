@@ -410,6 +410,17 @@ class BuiltinTools:
             process.popen.terminate()
         return self.get_background_process(process_id)
 
+    def close(self) -> None:
+        """Stops every background process still running, so none outlives
+        the agent's own process."""
+        for process in self._background.values():
+            if process.popen.poll() is None:
+                process.popen.terminate()
+                try:
+                    process.popen.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.popen.kill()
+
     def _resolve_within_workspace(self, path: str) -> Path:
         candidate = (self.workspace / path).resolve()
         if not self._is_within_workspace(candidate):

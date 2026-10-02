@@ -87,7 +87,10 @@ class PromptRunner(Protocol):
         progress_callback: Callable[[dict[str, object]], None] | None = None,
         system_prompt: str = SYSTEM_PROMPT,
         limits_override: AgentLimitsOverride | None = None,
+        conversation: list[dict[str, object]] | None = None,
     ) -> AgentResult: ...
+
+    def close(self) -> None: ...
 
 
 AgentFactory = Callable[[Path], PromptRunner]

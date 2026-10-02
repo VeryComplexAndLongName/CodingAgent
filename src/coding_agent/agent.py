@@ -28,12 +28,18 @@ class CodingAgent:
         self.provider = provider
         self.tools = tools
 
+    def close(self) -> None:
+        """Stops every background process a turn started, so none outlives
+        this agent's own process."""
+        self.tools.close()
+
     def run_prompt(
         self,
         prompt: str,
         progress_callback: ProgressCallback | None = None,
         system_prompt: str = SYSTEM_PROMPT,
         limits_override: AgentLimitsOverride | None = None,
+        conversation: list[dict[str, object]] | None = None,
     ) -> AgentResult:
         started_at = time.monotonic()
         tool_calls_used = 0
@@ -44,10 +50,14 @@ class CodingAgent:
         aggregated_completion_tokens = 0
         aggregated_total_tokens = 0
 
-        messages: list[dict[str, object]] = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt},
-        ]
+        # `None` (every caller before `chat`): a fresh conversation, as
+        # always. Given a list, only an empty one gets the system message
+        # — a second call on the same list continues the first's turns.
+        messages: list[dict[str, object]] = [] if conversation is None else conversation
+        if not messages:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
 
         for iteration in range(1, limits.max_iterations + 1):
             if self._timed_out(started_at, limits.max_seconds):
