@@ -25,6 +25,18 @@ def test_workspace_escape_is_blocked(tmp_path: Path) -> None:
         tools.read_file("../outside.txt")
 
 
+def test_list_dir_distinguishes_missing_from_a_file(tmp_path: Path) -> None:
+    # Measured 2026-10-02: both cases raised the same "Not a directory",
+    # so the model could not tell "not written yet" from "that is a file".
+    tools = BuiltinTools(workspace=tmp_path, command_timeout_seconds=2, max_command_output_chars=1000)
+    tools.write_file("a_file.txt", "hi")
+
+    with pytest.raises(ToolError, match="No such file or directory"):
+        tools.list_dir("missing")
+    with pytest.raises(ToolError, match="Not a directory, it's a file"):
+        tools.list_dir("a_file.txt")
+
+
 def test_replace_move_delete_file(tmp_path: Path) -> None:
     tools = BuiltinTools(workspace=tmp_path, command_timeout_seconds=2, max_command_output_chars=1000)
     tools.write_file("a.txt", "hello world")

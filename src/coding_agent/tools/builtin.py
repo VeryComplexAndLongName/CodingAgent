@@ -259,8 +259,10 @@ class BuiltinTools:
 
     def list_dir(self, path: str) -> str:
         target = self._resolve_within_workspace(path)
+        if not target.exists():
+            raise ToolError(f"No such file or directory: {path}")
         if not target.is_dir():
-            raise ToolError(f"Not a directory: {path}")
+            raise ToolError(f"Not a directory, it's a file: {path}")
         lines = []
         for child in sorted(target.iterdir(), key=lambda p: p.name.lower()):
             suffix = "/" if child.is_dir() else ""
