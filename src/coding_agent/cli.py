@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import locale
 import sys
 from pathlib import Path
 
@@ -146,6 +147,16 @@ def _run_chat(agent: CodingAgent) -> None:
         logger.info(result.message)
 
 
+def _read_prompt_file(path: Path) -> str:
+    """UTF-8, with or without a BOM; failing that, the system's own
+    encoding — a file saved as "ANSI" on this machine is still a file
+    someone meant to hand the agent."""
+    try:
+        return path.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError:
+        return path.read_text(encoding=locale.getpreferredencoding(False))
+
+
 def _resolve_prompt(parser: argparse.ArgumentParser, args: argparse.Namespace) -> str:
     """`run`'s prompt text: the positional argument, or `--prompt-file`'s
     content — exactly one of the two, read as-is (Markdown or plain text,
@@ -156,9 +167,14 @@ def _resolve_prompt(parser: argparse.ArgumentParser, args: argparse.Namespace) -
         if prompt is not None:
             parser.error("argument prompt: not allowed with argument --prompt-file")
         try:
-            return prompt_file.read_text(encoding="utf-8")
+            return _read_prompt_file(prompt_file)
         except OSError as exc:
             parser.error(f"argument --prompt-file: could not read {prompt_file}: {exc}")
+        except UnicodeDecodeError as exc:
+            parser.error(
+                f"argument --prompt-file: {prompt_file} is not valid UTF-8 or {locale.getpreferredencoding(False)} "
+                f"text ({exc}); save the file as UTF-8"
+            )
     if prompt is None:
         parser.error("one of the arguments prompt --prompt-file is required")
     return prompt

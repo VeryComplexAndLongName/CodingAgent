@@ -9,10 +9,14 @@ way in except being pasted as one unbroken argument.
 
 - **`run --prompt-file <path>` reads the prompt from a file** instead of
   the positional argument — Markdown or plain text, read as-is, nothing
-  stripped or interpreted. Exactly one of the positional argument or
-  `--prompt-file` is required; giving both, or neither, is refused with
-  the usage error naming which.
-- Version 0.7.0.
+  stripped or interpreted. UTF-8 (with or without a BOM) first; a file
+  that is not falls back to the system's own encoding (`cp1251` on a
+  Russian-locale Windows, for one), rather than crashing with a raw
+  `UnicodeDecodeError` — found live on 2026-10-02 against a file saved as
+  "ANSI". Exactly one of the positional argument or `--prompt-file` is
+  required; giving both, or neither, is refused with the usage error
+  naming which.
+- Version 0.7.1.
 
 ## Capabilities
 

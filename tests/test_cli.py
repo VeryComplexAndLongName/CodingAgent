@@ -53,6 +53,30 @@ def test_a_missing_prompt_file_is_rejected(tmp_path: Path) -> None:
         _resolve_prompt(parser, args)
 
 
+def test_a_prompt_file_in_the_systems_own_encoding(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Measured 2026-10-02: a file saved as "ANSI" (cp1251 here) crashed
+    # with an unhandled UnicodeDecodeError under plain UTF-8 reading.
+    monkeypatch.setattr("coding_agent.cli.locale.getpreferredencoding", lambda do_setlocale=True: "cp1251")
+    prompt_path = tmp_path / "task.txt"
+    prompt_path.write_bytes("Задача".encode("cp1251"))
+    parser = build_parser()
+    args = parser.parse_args(["run", "--prompt-file", str(prompt_path)])
+
+    assert _resolve_prompt(parser, args) == "Задача"
+
+
+def test_a_prompt_file_decodable_by_neither_encoding_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("coding_agent.cli.locale.getpreferredencoding", lambda do_setlocale=True: "cp1251")
+    prompt_path = tmp_path / "task.txt"
+    # 0x98 is a continuation byte alone (invalid UTF-8) and undefined in cp1251.
+    prompt_path.write_bytes(b"\x98")
+    parser = build_parser()
+    args = parser.parse_args(["run", "--prompt-file", str(prompt_path)])
+
+    with pytest.raises(SystemExit):
+        _resolve_prompt(parser, args)
+
+
 def test_global_options_after_the_subcommand_still_work_with_prompt_file(tmp_path: Path) -> None:
     prompt_path = tmp_path / "task.md"
     prompt_path.write_text("hi", encoding="utf-8")
