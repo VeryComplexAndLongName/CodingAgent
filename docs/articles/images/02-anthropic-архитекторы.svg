@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 627" width="1200" height="627">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117"/>
+      <stop offset="100%" style="stop-color:#1a2332"/>
+    </linearGradient>
+    <linearGradient id="accent2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#417d72"/>
+      <stop offset="100%" style="stop-color:#66b5a3"/>
+    </linearGradient>
+    <filter id="glow2">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="627" fill="url(#bg2)"/>
+  
+  <!-- Architecture layers -->
+  <g transform="translate(250,100)">
+    <!-- Layer 1: Top (Claude) -->
+    <rect x="0" y="0" width="700" height="80" rx="8" fill="#417d72" opacity="0.3" stroke="#417d72" stroke-width="2"/>
+    <text x="350" y="48" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#66b5a3" text-anchor="middle">Claude — Архитектор</text>
+    <circle cx="40" cy="40" r="15" fill="#417d72"/>
+    
+    <!-- Arrow -->
+    <line x1="350" y1="80" x2="350" y2="110" stroke="#66b5a3" stroke-width="2" marker-end="url(#arrow)"/>
+    
+    <!-- Layer 2: OpenSpec -->
+    <rect x="0" y="110" width="700" height="70" rx="8" fill="#333d4d" opacity="0.5" stroke="#66b5a3" stroke-width="1.5" stroke-dasharray="8,4"/>
+    <text x="350" y="152" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#cccccc" text-anchor="middle">OpenSpec — Связующее звено</text>
+    
+    <!-- Arrows down -->
+    <line x1="200" y1="180" x2="200" y2="220" stroke="#66b5a3" stroke-width="1.5"/>
+    <line x1="350" y1="180" x2="350" y2="220" stroke="#66b5a3" stroke-width="1.5"/>
+    <line x1="500" y1="180" x2="500" y2="220" stroke="#66b5a3" stroke-width="1.5"/>
+    
+    <!-- Layer 3: Implementers -->
+    <rect x="0" y="220" width="700" height="70" rx="8" fill="#333d4d" opacity="0.3" stroke="#417d72" stroke-width="1.5"/>
+    <text x="350" y="262" font-family="Arial, sans-serif" font-size="20" fill="#aaaaaa" text-anchor="middle">DeepSeek • GPT-5.3-Codex • Другие модели</text>
+  </g>
+  
+  <!-- 10x badge -->
+  <g transform="translate(1050,100)">
+    <circle cx="60" cy="60" r="50" fill="url(#accent2)" opacity="0.2" stroke="#66b5a3" stroke-width="3"/>
+    <text x="60" y="55" font-family="Arial, sans-serif" font-size="36" font-weight="bold" fill="#66b5a3" text-anchor="middle">10×</text>
+    <text x="60" y="80" font-family="Arial, sans-serif" font-size="14" fill="#66b5a3" text-anchor="middle">точнее</text>
+  </g>
+  
+  <!-- Title -->
+  <text x="600" y="440" font-family="Arial, sans-serif" font-size="52" font-weight="bold" fill="#ffffff" text-anchor="middle" filter="url(#glow2)">
+    Почему Anthropic — архитектор
+  </text>
+  <text x="600" y="500" font-family="Arial, sans-serif" font-size="28" fill="#66b5a3" text-anchor="middle">
+    Точность, контекст, структура
+  </text>
+  
+  <!-- Bottom -->
+  <rect x="450" y="540" width="300" height="3" fill="url(#accent2)" rx="1"/>
+  <text x="600" y="580" font-family="Arial, sans-serif" font-size="18" fill="#666666" text-anchor="middle">
+    OpenSpec Series • Article 2
+  </text>
+  
+  <path d="M0,627 L60,627 L60,580 L0,580 Z" fill="#417d72" opacity="0.8"/>
+  <path d="M1140,627 L1200,627 L1200,580 L1140,580 Z" fill="#417d72" opacity="0.8"/>
+</svg>
