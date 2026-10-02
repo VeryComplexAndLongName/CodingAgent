@@ -62,6 +62,7 @@ class AgentConfig(BaseModel):
     workspace: Path
     limits: AgentLimits
     no_proxy: bool = False
+    request_timeout_seconds: int = 120
 
     @field_validator("workspace", mode="before")
     @classmethod

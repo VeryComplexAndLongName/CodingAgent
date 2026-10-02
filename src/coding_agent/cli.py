@@ -43,6 +43,12 @@ def _add_global_args(parser: argparse.ArgumentParser, *, suppress_defaults: bool
     parser.add_argument("--max-seconds", type=int, default=default(300))
     parser.add_argument("--command-timeout-seconds", type=int, default=default(60))
     parser.add_argument("--max-command-output-chars", type=int, default=default(12000))
+    parser.add_argument(
+        "--request-timeout-seconds",
+        type=int,
+        default=default(120),
+        help="HTTP timeout for one model request",
+    )
     parser.add_argument("--max-prompt-tokens", type=int, default=default(None))
     parser.add_argument("--max-completion-tokens", type=int, default=default(None))
     parser.add_argument("--max-total-tokens", type=int, default=default(None))
@@ -101,6 +107,7 @@ def _build_agent(args: argparse.Namespace, workspace: Path | None = None) -> Cod
         workspace=workspace if workspace is not None else args.workspace,
         limits=limits,
         no_proxy=args.no_proxy,
+        request_timeout_seconds=args.request_timeout_seconds,
     )
 
     provider = OpenAICompatibleProvider(
@@ -108,6 +115,7 @@ def _build_agent(args: argparse.Namespace, workspace: Path | None = None) -> Cod
         model=config.model,
         api_key=config.api_key,
         trust_env=not config.no_proxy,
+        timeout_seconds=config.request_timeout_seconds,
     )
     tools = ToolRegistry(
         BuiltinTools(
@@ -121,10 +129,10 @@ def _build_agent(args: argparse.Namespace, workspace: Path | None = None) -> Cod
 
 def _run_chat(agent: CodingAgent) -> None:
     """One line of stdin per turn, every turn sharing one conversation,
-    until `exit`/`quit`, end of input, or Ctrl-C. A turn that raises (a
-    network error, a limit the provider itself rejects) ends that turn,
-    not the session: the line it failed on is dropped from the shared
-    conversation, and the next line is read as normal."""
+    until `exit`/`quit`, end of input, or Ctrl-C. `run_prompt` itself
+    turns a provider failure into a `provider_error`-stopped result, not
+    an exception; the `try` here is a last resort, for whatever that
+    does not cover, so one turn's bug still cannot end the session."""
     conversation: list[dict[str, object]] = []
     while True:
         try:

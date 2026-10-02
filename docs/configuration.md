@@ -13,6 +13,7 @@ Global options:
 - `--max-seconds`
 - `--command-timeout-seconds`
 - `--max-command-output-chars`
+- `--request-timeout-seconds` (HTTP timeout for one model request; default 120)
 - `--max-prompt-tokens`
 - `--max-completion-tokens`
 - `--max-total-tokens`
@@ -30,6 +31,11 @@ Every global option may come before `run`/`acp` or after it — a real ACP
 client such as OpenSpec Workbench's `local-llm-acp` adapter writes them
 after (`acp --base-url ... --model ...`). Where the same option is
 written in both places, the one after the subcommand is used.
+
+A model request that fails — a timeout, a connection error — ends the
+turn with `stopped_reason: "provider_error"` rather than raising:
+`run` prints the message and exits; `chat`'s session and `acp`'s session
+keep running.
 
 ### `run --prompt-file <path>`
 

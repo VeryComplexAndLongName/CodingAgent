@@ -111,3 +111,33 @@ def test_a_tool_error_is_logged_without_a_traceback(tmp_path: Path) -> None:
     assert len(tool_error_records) == 1
     assert tool_error_records[0]["exception"] is None
     assert not any(record["level"].name == "ERROR" for record in records)
+
+
+class _FailingProvider:
+    """Every call raises — a stand-in for a timed-out or unreachable
+    model endpoint."""
+
+    def complete(
+        self,
+        messages: list[dict[str, object]],
+        tools: list[dict[str, object]],
+        request_options: dict[str, object] | None = None,
+    ) -> AssistantTurn:
+        raise TimeoutError("simulated read timeout")
+
+
+def test_a_provider_failure_ends_the_turn_not_the_call(tmp_path: Path) -> None:
+    config = AgentConfig(
+        base_url="http://localhost:8000/v1",
+        model="test-model",
+        api_key=None,
+        workspace=tmp_path,
+        limits=AgentLimits(max_iterations=2, max_tool_calls=2, max_seconds=120, command_timeout_seconds=2, max_command_output_chars=4000),
+    )
+    tools = ToolRegistry(BuiltinTools(tmp_path, command_timeout_seconds=2, max_command_output_chars=4000))
+    agent = CodingAgent(config=config, provider=_FailingProvider(), tools=tools)
+
+    result = agent.run_prompt("hello")
+
+    assert result.stopped_reason == "provider_error"
+    assert "simulated read timeout" in result.message

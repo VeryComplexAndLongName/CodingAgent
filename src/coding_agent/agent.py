@@ -72,7 +72,18 @@ class CodingAgent:
                 progress_callback({"type": "iteration", "value": iteration})
 
             request_options = self._build_request_options(limits)
-            turn = self.provider.complete(messages=messages, tools=self.tools.schema(), request_options=request_options)
+            try:
+                turn = self.provider.complete(messages=messages, tools=self.tools.schema(), request_options=request_options)
+            except Exception as exc:  # noqa: BLE001
+                # A network failure or a timeout is not a bug worth a
+                # traceback; `messages` already ends on a user or tool
+                # message, the same shape as a turn awaiting its answer.
+                logger.warning("Model request failed: {}", exc)
+                return AgentResult(
+                    message=f"Stopped by a provider error: {exc}",
+                    stopped_reason="provider_error",
+                    usage=last_usage,
+                )
             turn.usage.apply_defaults()
             last_usage = turn.usage
 
