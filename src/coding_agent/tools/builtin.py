@@ -5,7 +5,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 
 class ToolError(RuntimeError):
@@ -193,6 +193,26 @@ class BuiltinTools:
         ]
 
     def call(self, name: str, arguments: dict[str, Any]) -> str:
+        # The single place every tool call passes through: whatever a
+        # specific method below did not already turn into a friendly
+        # ToolError — a filesystem failure `_resolve_within_workspace`'s
+        # own checks did not anticipate, a spawn failure, arguments the
+        # model shaped wrong for the tool it named — becomes one here,
+        # too. Measured 2026-10-02: a raw `UnicodeDecodeError` (reading an
+        # image as text) and, before that, others of this same family
+        # each reached the person as an unhandled traceback in turn,
+        # fixed one at a time; this is the fix that does not need a next
+        # one.
+        try:
+            return self._dispatch(name, arguments)
+        except ToolError:
+            raise
+        except ValidationError as exc:
+            raise ToolError(f"Invalid arguments for {name}: {exc}") from exc
+        except (OSError, UnicodeError) as exc:
+            raise ToolError(f"{type(exc).__name__}: {exc}") from exc
+
+    def _dispatch(self, name: str, arguments: dict[str, Any]) -> str:
         if name == "read_file":
             read_args = ReadFileArgs.model_validate(arguments)
             return self.read_file(read_args.path)
@@ -259,6 +279,8 @@ class BuiltinTools:
 
     def write_file(self, path: str, content: str) -> str:
         target = self._resolve_within_workspace(path)
+        if target.is_dir():
+            raise ToolError(f"Is a directory, not a file: {path}")
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
         rel = target.relative_to(self.workspace).as_posix()
@@ -341,6 +363,8 @@ class BuiltinTools:
         target = self._resolve_within_workspace(dst)
         if not source.exists():
             raise ToolError(f"Source does not exist: {src}")
+        if target.exists():
+            raise ToolError(f"Destination already exists: {dst}")
         target.parent.mkdir(parents=True, exist_ok=True)
         source.rename(target)
         src_rel = source.relative_to(self.workspace).as_posix()

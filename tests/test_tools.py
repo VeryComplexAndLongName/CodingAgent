@@ -79,6 +79,47 @@ def test_read_file_and_replace_text_distinguish_missing_from_a_directory(tmp_pat
         tools.replace_text("a_dir", "a", "b", expected_replacements=1)
 
 
+def test_write_file_onto_a_directory_is_refused_cleanly(tmp_path: Path) -> None:
+    tools = BuiltinTools(workspace=tmp_path, command_timeout_seconds=2, max_command_output_chars=1000)
+    (tmp_path / "a_dir").mkdir()
+
+    with pytest.raises(ToolError, match="Is a directory, not a file"):
+        tools.write_file("a_dir", "hi")
+
+
+def test_move_path_onto_an_existing_destination_is_refused_cleanly(tmp_path: Path) -> None:
+    tools = BuiltinTools(workspace=tmp_path, command_timeout_seconds=2, max_command_output_chars=1000)
+    tools.write_file("a.txt", "a")
+    tools.write_file("b.txt", "b")
+
+    with pytest.raises(ToolError, match="Destination already exists"):
+        tools.move_path("a.txt", "b.txt")
+
+
+def test_call_turns_any_os_error_into_a_clean_tool_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # The structural fix, not a one-off: an OSError no specific method
+    # above anticipated (here, a permission error `read_file`'s own
+    # `except UnicodeDecodeError` does not catch) still comes out of
+    # `call` as a `ToolError`, not a raw traceback.
+    tools = BuiltinTools(workspace=tmp_path, command_timeout_seconds=2, max_command_output_chars=1000)
+    tools.write_file("a.txt", "hi")
+
+    def _raise_permission_error(self: Path, encoding: str | None = None) -> str:
+        raise PermissionError("simulated: access denied")
+
+    monkeypatch.setattr(Path, "read_text", _raise_permission_error)
+
+    with pytest.raises(ToolError, match="PermissionError"):
+        tools.call("read_file", {"path": "a.txt"})
+
+
+def test_call_turns_invalid_arguments_into_a_clean_tool_error(tmp_path: Path) -> None:
+    tools = BuiltinTools(workspace=tmp_path, command_timeout_seconds=2, max_command_output_chars=1000)
+
+    with pytest.raises(ToolError, match="Invalid arguments"):
+        tools.call("read_file", {"path": 123})
+
+
 def test_close_stops_a_running_background_process(tmp_path: Path) -> None:
     tools = BuiltinTools(workspace=tmp_path, command_timeout_seconds=2, max_command_output_chars=1000)
     result = tools.run_command_background(f'"{sys.executable}" -c "import time; time.sleep(30)"')
