@@ -61,7 +61,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     run_parser = subparsers.add_parser("run", help="Run one prompt and print assistant output")
     _add_global_args(run_parser, suppress_defaults=True)
-    run_parser.add_argument("prompt")
+    run_parser.add_argument("prompt", nargs="?", default=None, help="The prompt text. Omit when using --prompt-file.")
+    run_parser.add_argument(
+        "--prompt-file",
+        type=Path,
+        default=None,
+        help="Read the prompt from this file (Markdown or plain text) instead of the positional argument",
+    )
 
     chat_parser = subparsers.add_parser("chat", help="Hold an interactive, multi-turn conversation over stdin/stdout")
     _add_global_args(chat_parser, suppress_defaults=True)
@@ -140,6 +146,24 @@ def _run_chat(agent: CodingAgent) -> None:
         logger.info(result.message)
 
 
+def _resolve_prompt(parser: argparse.ArgumentParser, args: argparse.Namespace) -> str:
+    """`run`'s prompt text: the positional argument, or `--prompt-file`'s
+    content — exactly one of the two, read as-is (Markdown or plain text,
+    the file does not say which)."""
+    prompt_file: Path | None = args.prompt_file
+    prompt: str | None = args.prompt
+    if prompt_file is not None:
+        if prompt is not None:
+            parser.error("argument prompt: not allowed with argument --prompt-file")
+        try:
+            return prompt_file.read_text(encoding="utf-8")
+        except OSError as exc:
+            parser.error(f"argument --prompt-file: could not read {prompt_file}: {exc}")
+    if prompt is None:
+        parser.error("one of the arguments prompt --prompt-file is required")
+    return prompt
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
@@ -165,7 +189,7 @@ def main() -> int:
 
     try:
         if args.command == "run":
-            result = agent.run_prompt(prompt=args.prompt)
+            result = agent.run_prompt(prompt=_resolve_prompt(parser, args))
             logger.info(result.message)
             return 0
 

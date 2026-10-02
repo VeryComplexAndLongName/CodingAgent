@@ -31,6 +31,15 @@ client such as OpenSpec Workbench's `local-llm-acp` adapter writes them
 after (`acp --base-url ... --model ...`). Where the same option is
 written in both places, the one after the subcommand is used.
 
+### `run --prompt-file <path>`
+
+Reads the prompt from a file (Markdown or plain text, read as-is) instead
+of the positional argument — exactly one of the two is required.
+
+```bash
+coding-agent --base-url http://localhost:8000/v1 --model qwen2.5-coder run --prompt-file task.md
+```
+
 ### `chat`
 
 An interactive, multi-turn conversation over stdin/stdout: each line is a
