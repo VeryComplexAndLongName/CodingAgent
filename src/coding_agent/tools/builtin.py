@@ -452,7 +452,13 @@ class BuiltinTools:
                 command,
                 cwd=self.workspace,
                 capture_output=True,
-                text=True,
+                encoding="utf-8",
+                # A command's own output is not this machine's locale: git,
+                # npm and the rest write UTF-8 regardless of it, and a
+                # byte that is not even valid there (measured 2026-10-02,
+                # cp1251: 0x98) crashed `subprocess`'s own reader thread
+                # outright rather than reaching this function at all.
+                errors="replace",
                 shell=True,
                 timeout=timeout_seconds,
             )
