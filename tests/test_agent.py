@@ -5,11 +5,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from loguru import logger
+
 from coding_agent.agent import CodingAgent
 from coding_agent.config import AgentConfig, AgentLimits
 from coding_agent.tools.builtin import BuiltinTools
 from coding_agent.tools.registry import ToolRegistry
-from coding_agent.types import AgentUsage, AssistantTurn
+from coding_agent.types import AgentUsage, AssistantTurn, ToolCall
 
 
 class RecordingProvider:
@@ -33,13 +35,13 @@ class RecordingProvider:
         return self.turns[index]
 
 
-def _build_agent(tmp_path: Path, provider: RecordingProvider) -> CodingAgent:
+def _build_agent(tmp_path: Path, provider: RecordingProvider, max_iterations: int = 1) -> CodingAgent:
     config = AgentConfig(
         base_url="http://localhost:8000/v1",
         model="test-model",
         api_key=None,
         workspace=tmp_path,
-        limits=AgentLimits(max_iterations=1, max_tool_calls=2, max_seconds=120, command_timeout_seconds=2, max_command_output_chars=4000),
+        limits=AgentLimits(max_iterations=max_iterations, max_tool_calls=2, max_seconds=120, command_timeout_seconds=2, max_command_output_chars=4000),
     )
     tools = ToolRegistry(BuiltinTools(tmp_path, command_timeout_seconds=2, max_command_output_chars=4000))
     return CodingAgent(config=config, provider=provider, tools=tools)
@@ -80,3 +82,32 @@ def test_omitting_conversation_keeps_every_call_fresh(tmp_path: Path) -> None:
 
     assert len(provider.seen_messages[0]) == 2
     assert len(provider.seen_messages[1]) == 2
+
+
+def test_a_tool_error_is_logged_without_a_traceback(tmp_path: Path) -> None:
+    # A path escaping the workspace is the tool's own, expected refusal —
+    # not a bug worth a stack trace in the log.
+    provider = RecordingProvider(
+        [
+            AssistantTurn(
+                content="",
+                tool_calls=[ToolCall(call_id="1", name="list_dir", arguments={"path": "C:/outside"})],
+                usage=AgentUsage(),
+            ),
+            AssistantTurn(content="done", tool_calls=[], usage=AgentUsage()),
+        ]
+    )
+    agent = _build_agent(tmp_path, provider, max_iterations=2)
+    records: list[dict[str, object]] = []
+    sink_id = logger.add(lambda message: records.append(message.record), level=0)
+
+    try:
+        result = agent.run_prompt("list something outside the workspace")
+    finally:
+        logger.remove(sink_id)
+
+    assert result.stopped_reason == "completed"
+    tool_error_records = [record for record in records if record["level"].name == "WARNING"]
+    assert len(tool_error_records) == 1
+    assert tool_error_records[0]["exception"] is None
+    assert not any(record["level"].name == "ERROR" for record in records)

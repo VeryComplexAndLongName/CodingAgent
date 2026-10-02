@@ -8,6 +8,7 @@ from loguru import logger
 
 from coding_agent.config import AgentConfig, AgentLimits, AgentLimitsOverride
 from coding_agent.llm.openai_compatible import OpenAICompatibleProvider
+from coding_agent.tools.builtin import ToolError
 from coding_agent.tools.registry import ToolRegistry
 from coding_agent.types import AgentResult, AgentUsage
 
@@ -151,6 +152,13 @@ class CodingAgent:
                 failed = False
                 try:
                     tool_output = self.tools.call(tool_call.name, tool_call.arguments)
+                except ToolError as exc:
+                    # The tool itself refused — a bad path, a missing
+                    # argument: expected, and the model's to fix, not a
+                    # traceback someone reading the log mistakes for a bug.
+                    logger.warning("Tool call refused: {}", exc)
+                    tool_output = f"Tool error: {exc}"
+                    failed = True
                 except Exception as exc:  # noqa: BLE001
                     logger.exception("Tool call failed")
                     tool_output = f"Tool error: {exc}"
