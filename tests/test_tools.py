@@ -53,6 +53,32 @@ def test_replace_move_delete_file(tmp_path: Path) -> None:
     assert "Deleted nested/b.txt" == delete_result
 
 
+def test_read_file_and_replace_text_on_a_binary_file_are_refused_cleanly(tmp_path: Path) -> None:
+    # Measured 2026-10-02: a model reading an image it had just written
+    # crashed with an unhandled UnicodeDecodeError, traceback and all.
+    tools = BuiltinTools(workspace=tmp_path, command_timeout_seconds=2, max_command_output_chars=1000)
+    (tmp_path / "image.png").write_bytes(bytes([0x89, 0x50, 0x4E, 0x47]))
+
+    with pytest.raises(ToolError, match="Not a text file"):
+        tools.read_file("image.png")
+    with pytest.raises(ToolError, match="Not a text file"):
+        tools.replace_text("image.png", "a", "b", expected_replacements=1)
+
+
+def test_read_file_and_replace_text_distinguish_missing_from_a_directory(tmp_path: Path) -> None:
+    tools = BuiltinTools(workspace=tmp_path, command_timeout_seconds=2, max_command_output_chars=1000)
+    (tmp_path / "a_dir").mkdir()
+
+    with pytest.raises(ToolError, match="No such file or directory"):
+        tools.read_file("missing.txt")
+    with pytest.raises(ToolError, match="Is a directory, not a file"):
+        tools.read_file("a_dir")
+    with pytest.raises(ToolError, match="No such file or directory"):
+        tools.replace_text("missing.txt", "a", "b", expected_replacements=1)
+    with pytest.raises(ToolError, match="Is a directory, not a file"):
+        tools.replace_text("a_dir", "a", "b", expected_replacements=1)
+
+
 def test_close_stops_a_running_background_process(tmp_path: Path) -> None:
     tools = BuiltinTools(workspace=tmp_path, command_timeout_seconds=2, max_command_output_chars=1000)
     result = tools.run_command_background(f'"{sys.executable}" -c "import time; time.sleep(30)"')

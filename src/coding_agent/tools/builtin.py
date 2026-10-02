@@ -248,7 +248,14 @@ class BuiltinTools:
 
     def read_file(self, path: str) -> str:
         target = self._resolve_within_workspace(path)
-        return target.read_text(encoding="utf-8")
+        if not target.exists():
+            raise ToolError(f"No such file or directory: {path}")
+        if target.is_dir():
+            raise ToolError(f"Is a directory, not a file: {path}")
+        try:
+            return target.read_text(encoding="utf-8")
+        except UnicodeDecodeError as exc:
+            raise ToolError(f"Not a text file (cannot decode as UTF-8): {path}") from exc
 
     def write_file(self, path: str, content: str) -> str:
         target = self._resolve_within_workspace(path)
@@ -303,7 +310,14 @@ class BuiltinTools:
 
     def replace_text(self, path: str, old_text: str, new_text: str, expected_replacements: int) -> str:
         target = self._resolve_within_workspace(path)
-        original = target.read_text(encoding="utf-8")
+        if not target.exists():
+            raise ToolError(f"No such file or directory: {path}")
+        if target.is_dir():
+            raise ToolError(f"Is a directory, not a file: {path}")
+        try:
+            original = target.read_text(encoding="utf-8")
+        except UnicodeDecodeError as exc:
+            raise ToolError(f"Not a text file (cannot decode as UTF-8): {path}") from exc
         count = original.count(old_text)
         if count != expected_replacements:
             raise ToolError(f"Expected {expected_replacements} replacements but found {count}")
