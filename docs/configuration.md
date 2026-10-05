@@ -6,6 +6,7 @@ Global options:
 - `--base-url`
 - `--model`
 - `--api-key`
+- `--searxng-url` (default `http://192.168.137.39:8888`)
 - `--no-proxy`
 - `--workspace`
 - `--max-iterations`
@@ -68,9 +69,15 @@ Fallback values:
 - `CODING_AGENT_BASE_URL`
 - `CODING_AGENT_MODEL`
 - `CODING_AGENT_API_KEY`
+- `CODING_AGENT_SEARXNG_URL`
 - `CODING_AGENT_NO_PROXY` (`1`/`true`/`yes`/`on`)
 
 ## Proxies
+
+SearXNG searches always connect directly to the configured internal server.
+Web page retrieval honors `--no-proxy` just like model requests. The search
+URL can be a base URL or end in `/search`; no search API key is required.
+Both web tools are available in `run`, `chat` and `acp`.
 
 Model calls follow `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` from the
 environment. Behind a corporate proxy that cannot reach a model served on

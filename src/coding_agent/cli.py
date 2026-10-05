@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import locale
+import os
 import sys
 from pathlib import Path
 
@@ -31,6 +32,11 @@ def _add_global_args(parser: argparse.ArgumentParser, *, suppress_defaults: bool
     parser.add_argument("--base-url", default=default(env_base_url))
     parser.add_argument("--model", default=default(env_model))
     parser.add_argument("--api-key", default=default(env_api_key))
+    parser.add_argument(
+        "--searxng-url",
+        default=default(os.getenv("CODING_AGENT_SEARXNG_URL", "http://192.168.137.39:8888")),
+        help="SearXNG base URL for web_search (connects directly)",
+    )
     parser.add_argument(
         "--no-proxy",
         action="store_true",
@@ -108,6 +114,7 @@ def _build_agent(args: argparse.Namespace, workspace: Path | None = None) -> Cod
         limits=limits,
         no_proxy=args.no_proxy,
         request_timeout_seconds=args.request_timeout_seconds,
+        searxng_url=args.searxng_url,
     )
 
     provider = OpenAICompatibleProvider(
@@ -122,6 +129,8 @@ def _build_agent(args: argparse.Namespace, workspace: Path | None = None) -> Cod
             workspace=config.workspace,
             command_timeout_seconds=config.limits.command_timeout_seconds,
             max_command_output_chars=config.limits.max_command_output_chars,
+            searxng_url=config.searxng_url,
+            web_trust_env=not config.no_proxy,
         )
     )
     return CodingAgent(config=config, provider=provider, tools=tools)

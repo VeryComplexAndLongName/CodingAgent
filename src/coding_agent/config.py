@@ -63,6 +63,7 @@ class AgentConfig(BaseModel):
     limits: AgentLimits
     no_proxy: bool = False
     request_timeout_seconds: int = 120
+    searxng_url: str = "http://192.168.137.39:8888"
 
     @field_validator("workspace", mode="before")
     @classmethod
