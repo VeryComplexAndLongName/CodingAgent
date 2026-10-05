@@ -134,3 +134,41 @@ SHALL be laid over its session's.
 - **WHEN** `session/new` sets `max_iterations: 2` and `max_seconds: 60`, and
   a `session/prompt` sets `max_iterations: 1`
 - **THEN** the turn runs with `max_iterations: 1` and `max_seconds: 60`
+
+### Requirement: The model endpoint can be reached without a proxy
+
+The agent SHALL offer `--no-proxy`, falling back to
+`CODING_AGENT_NO_PROXY`, which makes the OpenAI-compatible provider ignore
+the environment's proxy settings for model calls. Without it the provider
+SHALL keep trusting the environment.
+
+#### Scenario: A model on the local network behind a corporate proxy
+
+- **WHEN** `HTTP_PROXY` names a proxy that cannot reach the model's host,
+  and the agent is run with `--no-proxy`
+- **THEN** the model call goes to the endpoint directly and the turn
+  succeeds
+
+#### Scenario: The flag is not given
+
+- **WHEN** the agent is run without `--no-proxy` and without
+  `CODING_AGENT_NO_PROXY`
+- **THEN** the provider uses the environment's proxy settings as before
+
+### Requirement: A global option is read before or after the subcommand
+
+Every option `coding-agent` accepts outside `run`'s own `prompt`
+positional SHALL be read whether it is written before `run`/`acp` or
+after it. Where the same option is written in both places, the one
+written after the subcommand SHALL be used.
+
+#### Scenario: Options written after the subcommand, as a real ACP client writes them
+
+- **WHEN** `coding-agent acp --base-url <url> --model <model>` is run
+- **THEN** the server uses that base URL and model, exactly as
+  `coding-agent --base-url <url> --model <model> acp` would
+
+#### Scenario: The same option in both places
+
+- **WHEN** `coding-agent --model a run --model b "hi"` is run
+- **THEN** the turn uses model `b`
