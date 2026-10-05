@@ -17,6 +17,7 @@
 - [x] 2.1 `docs/configuration.md`: `--prompt-file`, and that it is
   exclusive with the positional prompt.
 - [x] 2.2 Version 0.7.1 in `pyproject.toml` and `__init__.py`.
+- [x] 2.3 Show `--prompt-file PATH` in the root CLI help and bump the patch version.
 
 ## 3. Checks
 

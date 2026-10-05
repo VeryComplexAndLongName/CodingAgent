@@ -4,7 +4,9 @@ import argparse
 import locale
 import os
 import sys
+from io import TextIOWrapper
 from pathlib import Path
+from typing import cast
 
 from loguru import logger
 
@@ -72,7 +74,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    run_parser = subparsers.add_parser("run", help="Run one prompt and print assistant output")
+    run_parser = subparsers.add_parser(
+        "run",
+        help="Run one prompt from text or --prompt-file PATH and print assistant output",
+    )
     _add_global_args(run_parser, suppress_defaults=True)
     run_parser.add_argument("prompt", nargs="?", default=None, help="The prompt text. Omit when using --prompt-file.")
     run_parser.add_argument(
@@ -206,8 +211,8 @@ def main() -> int:
         # stdout is the protocol's channel and carries nothing else; the
         # protocol is UTF-8 whatever the console's code page.
         logger.add(sys.stderr, format="{message}")
-        sys.stdin.reconfigure(encoding="utf-8")
-        sys.stdout.reconfigure(encoding="utf-8")
+        cast(TextIOWrapper, sys.stdin).reconfigure(encoding="utf-8")
+        cast(TextIOWrapper, sys.stdout).reconfigure(encoding="utf-8")
         server = ACPServer(agent_factory=lambda cwd: _build_agent(args, workspace=cwd))
         try:
             server.serve(sys.stdin)

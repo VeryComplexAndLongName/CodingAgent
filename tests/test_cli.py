@@ -11,6 +11,10 @@ import pytest
 from coding_agent.cli import _resolve_prompt, build_parser
 
 
+def test_root_help_mentions_prompt_file() -> None:
+    assert "--prompt-file PATH" in build_parser().format_help()
+
+
 def test_prompt_from_the_positional_argument() -> None:
     parser = build_parser()
     args = parser.parse_args(["run", "hello"])
