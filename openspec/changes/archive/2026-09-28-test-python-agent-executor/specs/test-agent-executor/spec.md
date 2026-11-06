@@ -1,3 +1,7 @@
+## Purpose
+
+The system MUST support a per-change harness configuration assigning a dedicated agent id for propose/review/apply/verify.
+
 ## ADDED Requirements
 
 ### Requirement: Executor assignment smoke test
