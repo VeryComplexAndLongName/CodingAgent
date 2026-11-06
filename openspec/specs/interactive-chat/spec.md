@@ -1,4 +1,9 @@
-## ADDED Requirements
+# interactive-chat Specification
+
+## Purpose
+`coding-agent chat` SHALL read one line at a time from stdin, run it as a turn sharing one conversation with every line before it in the same process, and print each turn's message. A blank line SHALL be skipped. `exit` or `quit` (trimmed, case-insensitive), end of input, or Ctrl-C SHALL end the session.
+
+## Requirements
 
 ### Requirement: A `chat` command holds a multi-turn conversation
 

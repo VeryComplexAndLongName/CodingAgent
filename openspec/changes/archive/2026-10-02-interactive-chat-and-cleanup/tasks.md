@@ -10,7 +10,7 @@
 
 ## 2. The `chat` command
 
-- [ ] 2.1 `src/coding_agent/cli.py`: `chat` takes no positional argument.
+- [x] 2.1 `src/coding_agent/cli.py`: `chat` takes no positional argument.
   It reads one line at a time from stdin; a blank line is skipped; `exit`
   or `quit` (case-insensitive, trimmed) ends the loop; end of input or
   Ctrl-C ends it too. Each line runs through `run_prompt` sharing one
@@ -56,3 +56,9 @@
   the first's conversation. `exit` ended the process cleanly (no
   background process had been started in this exchange, so none needed
   stopping).
+
+
+## Status reconciliation, 2026-11-06
+
+Previously unchecked acceptance has been confirmed by the retained evidence in
+`audit-verification.md`. The checkboxes record that acceptance, not a new deployment.

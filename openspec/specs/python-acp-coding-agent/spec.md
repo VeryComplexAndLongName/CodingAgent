@@ -1,7 +1,8 @@
 # python-acp-coding-agent Specification
 
 ## Purpose
-TBD - created by archiving change 2026-09-28-python-acp-coding-agent. Update Purpose after archive.
+
+Provides a Python coding agent over the Agent Client Protocol with configurable OpenAI-compatible models, tool execution, conversation state and resilient provider handling.
 
 ## Requirements
 
@@ -172,3 +173,73 @@ written after the subcommand SHALL be used.
 
 - **WHEN** `coding-agent --model a run --model b "hi"` is run
 - **THEN** the turn uses model `b`
+
+### Requirement: `run`'s prompt comes from the positional argument or a file
+
+`coding-agent run` SHALL accept the prompt either as its positional
+argument or, given `--prompt-file <path>`, as that file's content read
+as-is (Markdown or plain, nothing stripped or interpreted) — UTF-8 (with
+or without a BOM), falling back to the system's own encoding where it is
+not. Exactly one of the two SHALL be given; giving both, or neither,
+SHALL be refused with a usage error. A file decodable by neither SHALL be
+refused with a usage error naming the file.
+
+#### Scenario: A Markdown file as the prompt
+
+- **WHEN** `coding-agent run --prompt-file task.md` is run and `task.md`
+  holds a Markdown checklist
+- **THEN** the file's content is sent as the turn's prompt, unchanged
+
+#### Scenario: A file in the system's own encoding
+
+- **WHEN** `task.txt` is saved in the system's own encoding rather than
+  UTF-8
+- **THEN** its content is still read correctly, rather than raising an
+  unhandled `UnicodeDecodeError`
+
+#### Scenario: Both given
+
+- **WHEN** `coding-agent run "hi" --prompt-file task.md` is run
+- **THEN** the process exits with a usage error naming both
+
+#### Scenario: Neither given
+
+- **WHEN** `coding-agent run` is run with no positional argument and no
+  `--prompt-file`
+- **THEN** the process exits with a usage error
+
+### Requirement: The model request's timeout is configurable
+
+`--request-timeout-seconds` (default 120) SHALL set the HTTP timeout the
+provider gives each model request.
+
+#### Scenario: A slower model given more time
+
+- **WHEN** `coding-agent --request-timeout-seconds 300 ...` is run
+- **THEN** a model request is allowed up to 300 seconds before the
+  provider gives up on it
+
+### Requirement: A failed model request ends the turn, not the process
+
+A turn whose model request fails (a timeout, a connection error) SHALL
+end with `stopped_reason: "provider_error"` and a message naming the
+failure, rather than raising out of `run_prompt`.
+
+#### Scenario: A request timing out
+
+- **WHEN** a model request exceeds `--request-timeout-seconds`
+- **THEN** the turn ends with `stopped_reason: "provider_error"`; `run`
+  prints the message and exits; `chat`'s session and `acp`'s session
+  continue
+
+### Requirement: A background process never outlives the agent's own
+
+A background process `run_command_background` started SHALL be stopped
+when the agent's own process ends, whether or not a turn stopped it
+itself first.
+
+#### Scenario: A background process still running when the process ends
+
+- **WHEN** a turn starts a background process and `run`, `chat` ends, or
+  `acp`'s stdin closes, without a turn stopping it first
+- **THEN** the process is terminated before the agent's own process exits

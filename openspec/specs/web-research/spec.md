@@ -1,7 +1,8 @@
 # web-research Specification
 
 ## Purpose
-TBD - created by archiving change 2026-10-05-web-research. Update Purpose after archive.
+
+Lets the coding agent search the web and retrieve page content through its configured research provider while respecting provider errors and bounded results.
 
 ## Requirements
 
