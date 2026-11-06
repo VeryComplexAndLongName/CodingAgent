@@ -2,9 +2,9 @@
 This change prepares a delegated coding task for the Python ACP coding agent to generate a FastAPI service in an external directory and validate core endpoint behavior.
 
 ## Non-Goals
-- No implementation is performed in this change.
+- No FastAPI service implementation is added to the CodingAgent library; generated application code stays in the requested external workspace.
 - No deployment automation is added.
-- No archive action is performed.
+- No archive or merge is performed before the existing human-required review gate is satisfied.
 
 ## Decisions
 1. Use delegated task execution by `python-coding-agent-acp`.
@@ -29,3 +29,7 @@ This change prepares a delegated coding task for the Python ACP coding agent to 
 
 ## Protocol Notes
 No new ACP methods are introduced in this change. The change uses existing agent execution flow and delegated task semantics.
+
+## Execution status — 2026-11-06
+
+The real Python ACP executor completed the external task and verification. See verification.md and execution-proof.json. The four delegated tasks are complete; the existing human review remains pending.
