@@ -1,0 +1,196 @@
+{
+  "date": "2026-11-06",
+  "external_workspace": "C:\\temp\\acp-custom-llm",
+  "actual_agent_version": "0.10.1",
+  "protocol": 1,
+  "model": "QuantTrio/Qwen3.6-35B-A3B-AWQ",
+  "original_registry_alias_unknown": true,
+  "real_python_acp_binary_used": true,
+  "key_source": "already-authorized credential for exactly the requested endpoint; process memory only",
+  "key_saved": false,
+  "key_in_command_line": false,
+  "human_review": "pending; existing assisted/human-required configuration unchanged",
+  "executor_tasks_sha256": "02f0a47f3b22f921c83c255d4bc4e436fb0dee4c00d771c6fc265c84ad1e5c93",
+  "source_manifest": [
+    {
+      "file": ".gitignore",
+      "bytes": 109,
+      "sha256": "ed7b84e816359d17276a801802de5c362c2c572ce3e50a8670c8362b08351380"
+    },
+    {
+      "file": ".python-version",
+      "bytes": 5,
+      "sha256": "7b55f8e67b5623c4bef3fa691288da9437d79d3aba156de48d481db32ac7d16d"
+    },
+    {
+      "file": "DELEGATED_TASKS.md",
+      "bytes": 3168,
+      "sha256": "02f0a47f3b22f921c83c255d4bc4e436fb0dee4c00d771c6fc265c84ad1e5c93"
+    },
+    {
+      "file": "pyproject.toml",
+      "bytes": 550,
+      "sha256": "60b54760d70ab1d9ccbaccd8f833724acfb84bbaded614be28318b2ffdb59437"
+    },
+    {
+      "file": "README.md",
+      "bytes": 1463,
+      "sha256": "8403d250f37066ca80e4117286f28bda2fd8d9be0596621bb4f7d698cd12eb58"
+    },
+    {
+      "file": "src/acp_custom_llm/__init__.py",
+      "bytes": 152,
+      "sha256": "2882b585ba12e814b137d38997b0029ea7e7dc22389dc358ddbe1f1b452fb077"
+    },
+    {
+      "file": "src/acp_custom_llm/main.py",
+      "bytes": 1144,
+      "sha256": "77f9923f77b5d3d0733a4449bef64e3e4e9c602dfb93f1ddc5af03ae4df5a5b5"
+    },
+    {
+      "file": "tests/test_integration.py",
+      "bytes": 4950,
+      "sha256": "1d11fc010374260ee68587751e131c6cd9dc38b11fc75567547e3236c7f1d176"
+    },
+    {
+      "file": "tests/test_main.py",
+      "bytes": 5824,
+      "sha256": "7cc2dbe9f16a9ebc8a201bf0520b0f41045925bfc80da5a3b75dcaa7a2906192"
+    },
+    {
+      "file": "uv.lock",
+      "bytes": 154399,
+      "sha256": "2433ff4adf6fef4ad506a6e29df84121ec0ce29b2c458497ca5c0f8aeb67ff15"
+    }
+  ],
+  "bundle_sha256": "e4db703f7a9b6ea4707174173b947863b7abd3c6589714f68a35050180cd356f",
+  "turns": [
+    {
+      "turn": "run",
+      "protocol": 1,
+      "model": "QuantTrio/Qwen3.6-35B-A3B-AWQ",
+      "authenticated": true,
+      "result": {
+        "stopReason": "max_tokens",
+        "_meta": {
+          "codingAgent": {
+            "stoppedReason": "max_total_tokens"
+          }
+        },
+        "usage": {
+          "inputTokens": 147888,
+          "outputTokens": 7610,
+          "totalTokens": 155498
+        }
+      },
+      "evidence_sha256": "7966461ac418babf2745a830cf9ef2c0bf5988f6ef0a9fb9ffe6b3ba29fe336f"
+    },
+    {
+      "turn": "resume-1",
+      "protocol": 1,
+      "model": "QuantTrio/Qwen3.6-35B-A3B-AWQ",
+      "authenticated": true,
+      "result": {
+        "stopReason": "max_tokens",
+        "_meta": {
+          "codingAgent": {
+            "stoppedReason": "max_total_tokens"
+          }
+        },
+        "usage": {
+          "inputTokens": 154492,
+          "outputTokens": 6875,
+          "totalTokens": 161367
+        }
+      },
+      "evidence_sha256": "7966461ac418babf2745a830cf9ef2c0bf5988f6ef0a9fb9ffe6b3ba29fe336f"
+    },
+    {
+      "turn": "finish",
+      "protocol": 1,
+      "model": "QuantTrio/Qwen3.6-35B-A3B-AWQ",
+      "authenticated": true,
+      "result": {
+        "stopReason": "max_tokens",
+        "_meta": {
+          "codingAgent": {
+            "stoppedReason": "max_total_tokens"
+          }
+        },
+        "usage": {
+          "inputTokens": 146231,
+          "outputTokens": 7316,
+          "totalTokens": 153547
+        }
+      },
+      "evidence_sha256": "7966461ac418babf2745a830cf9ef2c0bf5988f6ef0a9fb9ffe6b3ba29fe336f"
+    },
+    {
+      "turn": "evidence",
+      "protocol": 1,
+      "model": "QuantTrio/Qwen3.6-35B-A3B-AWQ",
+      "authenticated": true,
+      "result": {
+        "stopReason": "end_turn",
+        "_meta": {
+          "codingAgent": {
+            "stoppedReason": "completed"
+          }
+        },
+        "usage": {
+          "inputTokens": 57484,
+          "outputTokens": 2806,
+          "totalTokens": 60290
+        }
+      },
+      "evidence_sha256": "97e727c05dc47bef88cd632bc6093d78641b5c6e17573f821c4bb1548795a6e3"
+    },
+    {
+      "turn": "polish",
+      "protocol": 1,
+      "model": "QuantTrio/Qwen3.6-35B-A3B-AWQ",
+      "authenticated": true,
+      "result": {
+        "stopReason": "end_turn",
+        "_meta": {
+          "codingAgent": {
+            "stoppedReason": "completed"
+          }
+        },
+        "usage": {
+          "inputTokens": 33775,
+          "outputTokens": 4212,
+          "totalTokens": 37987
+        }
+      },
+      "evidence_sha256": "02f0a47f3b22f921c83c255d4bc4e436fb0dee4c00d771c6fc265c84ad1e5c93"
+    }
+  ],
+  "independent_external_verification": {
+    "pytest": "7 passed in 8.75s",
+    "real_http": {
+      "GET /api/v1/version": [
+        200,
+        {
+          "version": "0.1.0"
+        }
+      ],
+      "POST a=1,b=2": [
+        200,
+        {
+          "sum": 3
+        }
+      ],
+      "POST missing a": 422,
+      "POST noninteger a": 422
+    },
+    "server_cleanup": "tests terminate their own spawned server in finally"
+  },
+  "parent_verification": {
+    "runtime_unchanged_from_base": "5d3ae591a79ffca0d9977c4a0497713dd6869aa1",
+    "pytest": "71 passed in 7.89s; own environment, process-only NO_PROXY localhost",
+    "ruff": "12 pre-existing findings (0.17.4)",
+    "mypy": "missing lxml stubs; lxml-stubs exposes 52 pre-existing typing errors in tools/web.py",
+    "full_static_checks_green": false
+  }
+}
